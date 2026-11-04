@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#16161a">
+<meta name="robots" content="noindex">
+<title>일러스트 검수</title>
+<style>
+:root{
+  --bg:#16161a; --panel:#202026; --panel2:#2a2a32; --line:#34343e;
+  --text:#ececf1; --sub:#9a9aa8; --accent:#7fb685; --accent-ink:#0f1a10;
+  --hold:#d9b44a; --edit:#6aa5e0; --regen:#e07a6a; --danger:#e06a6a;
+  --radius:12px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);
+  font:15px/1.45 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Noto Sans KR","Malgun Gothic",sans-serif}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:var(--panel2);border-radius:10px;padding:10px 12px}
+button:disabled{opacity:.4}
+input,select{font-size:16px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px;width:100%}
+.hidden{display:none!important}
+.wrap{max-width:720px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:4px 0 16px}
+h2{font-size:15px;color:var(--sub);font-weight:600;margin:20px 0 8px}
+label{display:block;font-size:13px;color:var(--sub);margin:12px 0 4px}
+.primary{background:var(--accent);color:var(--accent-ink);font-weight:700}
+.row{display:flex;gap:8px;align-items:center}
+.grow{flex:1}
+.muted{color:var(--sub);font-size:13px}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{padding:8px 14px;border-radius:999px;background:var(--panel2)}
+.chip.on{background:var(--accent);color:var(--accent-ink);font-weight:700}
+.list{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:14px;text-align:left}
+.card b{font-size:18px;display:block}
+.bar{height:6px;border-radius:3px;background:var(--panel2);margin-top:8px;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--accent)}
+.err{background:#3a1f22;border:1px solid #6a2f33;color:#ffcfcf;padding:10px;border-radius:10px;margin:10px 0;white-space:pre-wrap;font-size:13px}
+
+/* viewer */
+#viewer{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--bg)}
+.vtop{display:flex;align-items:center;gap:8px;padding:8px 10px;padding-top:max(8px,env(safe-area-inset-top));border-bottom:1px solid var(--line)}
+.vtop select{width:auto;padding:6px 8px;font-size:14px}
+.vtop .t{flex:1;min-width:0;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stage{flex:1;position:relative;overflow:hidden;touch-action:pan-y;background:#0e0e11}
+.stage img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;user-select:none;-webkit-user-drag:none;transition:transform .15s}
+.stage .nav{position:absolute;top:0;bottom:0;width:22%;background:transparent;border-radius:0;padding:0}
+.stage .nav.l{left:0}.stage .nav.r{right:0}
+.stage .spin{position:absolute;inset:0;display:grid;place-items:center;color:var(--sub)}
+.stage .badge{position:absolute;left:10px;top:10px;padding:4px 10px;border-radius:999px;font-weight:700;font-size:13px}
+.b-ok{background:var(--accent);color:var(--accent-ink)}
+.b-보류{background:var(--hold);color:#231b04}
+.b-편집{background:var(--edit);color:#06182a}
+.b-재생성{background:var(--regen);color:#2a0b06}
+.b-cand{background:rgba(0,0,0,.55);color:#fff}
+.b-unk{background:#555;color:#fff}
+.info{padding:10px 12px 6px;border-top:1px solid var(--line);background:var(--panel)}
+.emo{display:flex;align-items:baseline;gap:8px}
+.emo .code{font-size:22px;font-weight:800}
+.emo .name{font-size:18px;font-weight:700}
+.prompt{font-size:12px;color:var(--sub);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prompt.open{white-space:normal}
+.fname{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;margin-top:4px;word-break:break-all}
+.fname s{color:var(--sub)}
+.fname .arrow{color:var(--accent)}
+.sibs{display:flex;gap:6px;overflow-x:auto;padding:8px 12px 0;background:var(--panel)}
+.sib{flex:0 0 auto;width:52px;height:52px;border-radius:8px;border:2px solid transparent;background:#0e0e11 center/cover no-repeat;position:relative;padding:0}
+.sib.cur{border-color:var(--text)}
+.sib.ok{box-shadow:inset 0 0 0 2px var(--accent)}
+.sib span{position:absolute;right:2px;bottom:1px;font-size:10px;background:rgba(0,0,0,.6);padding:0 3px;border-radius:4px;color:#fff}
+.actions{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:8px 12px;background:var(--panel)}
+.actions .confirm{grid-column:span 2;background:var(--accent);color:var(--accent-ink);font-weight:800;font-size:16px}
+.actions .t-보류.on{background:var(--hold);color:#231b04;font-weight:700}
+.actions .t-편집.on{background:var(--edit);color:#06182a;font-weight:700}
+.actions .t-재생성.on{background:var(--regen);color:#2a0b06;font-weight:700}
+.vbottom{display:flex;gap:8px;align-items:center;padding:8px 12px;padding-bottom:max(8px,env(safe-area-inset-bottom));background:var(--panel);border-top:1px solid var(--line)}
+.vbottom .pc{flex:1;font-size:13px;color:var(--sub)}
+
+/* sheet */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--panel);width:100%;max-width:720px;border-radius:16px 16px 0 0;padding:16px;padding-bottom:max(16px,env(safe-area-inset-bottom));max-height:88vh;overflow:auto}
+.sheet h3{margin:0 0 4px;font-size:17px}
+.preview{font-family:ui-monospace,Menlo,Consolas,monospace;background:var(--bg);padding:10px;border-radius:10px;margin-top:12px;word-break:break-all}
+.pending-list{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;max-height:40vh;overflow:auto;background:var(--bg);border-radius:10px;padding:8px}
+.pending-list div{padding:3px 0;border-bottom:1px solid var(--line)}
+.toast{position:fixed;left:50%;top:calc(64px + env(safe-area-inset-top));transform:translateX(-50%);background:#000c;color:#fff;padding:8px 14px;border-radius:999px;z-index:30;font-size:14px;pointer-events:none}
+</style>
+</head>
+<body>
+
+<!-- 설정 -->
+<section id="setup" class="wrap hidden">
+  <h1>일러스트 검수 · 설정</h1>
+  <p class="muted">이미지가 있는 GitHub 저장소와 토큰을 입력하세요. 토큰은 이 기기 브라우저에만 저장됩니다.</p>
+  <label>GitHub 계정</label><input id="s-owner" autocomplete="off" autocapitalize="off">
+  <label>이미지 저장소</label><input id="s-repo" autocomplete="off" autocapitalize="off">
+  <label>브랜치</label><input id="s-branch" autocomplete="off" autocapitalize="off">
+  <label>토큰 (github_pat_…)</label><input id="s-token" type="password" autocomplete="off" autocapitalize="off">
+  <div id="s-err" class="err hidden"></div>
+  <div class="row" style="margin-top:16px"><button id="s-save" class="primary grow">저장하고 시작</button></div>
+</section>
+
+<!-- 홈 -->
+<section id="home" class="wrap hidden">
+  <div class="row"><h1 class="grow">일러스트 검수</h1><button id="h-reload">새로고침</button><button id="h-settings">설정</button></div>
+  <div id="h-err" class="err hidden"></div>
+  <div id="h-loading" class="muted">불러오는 중…</div>
+  <h2>프로젝트</h2>
+  <div id="h-projects" class="chips"></div>
+  <h2>인물</h2>
+  <div id="h-chars" class="list"></div>
+  <div id="h-pending" class="hidden" style="margin-top:20px">
+    <div class="row"><span class="grow muted" id="h-pc"></span><button id="h-review">변경 목록</button><button id="h-commit" class="primary">커밋</button></div>
+  </div>
+</section>
+
+<!-- 뷰어 -->
+<section id="viewer" class="hidden">
+  <div class="vtop">
+    <button id="v-back">←</button>
+    <div class="t" id="v-title"></div>
+    <select id="v-filter">
+      <option value="all">전체</option>
+      <option value="open">미확정 코드</option>
+      <option value="tag">태그 있음</option>
+      <option value="changed">변경됨</option>
+    </select>
+    <select id="v-jump"></select>
+  </div>
+  <div class="stage" id="v-stage">
+    <img id="v-img" alt="">
+    <div class="spin" id="v-spin">불러오는 중…</div>
+    <div class="badge" id="v-badge"></div>
+    <button class="nav l" id="v-prev" aria-label="이전"></button>
+    <button class="nav r" id="v-next" aria-label="다음"></button>
+  </div>
+  <div class="sibs" id="v-sibs"></div>
+  <div class="info">
+    <div class="emo"><span class="code" id="v-code"></span><span class="name" id="v-emo"></span><span class="muted grow" style="text-align:right" id="v-pos"></span></div>
+    <div class="prompt" id="v-prompt"></div>
+    <div class="fname" id="v-fname"></div>
+  </div>
+  <div class="actions">
+    <button class="confirm" id="a-confirm">확정</button>
+    <button id="a-manual">이름 수정</button>
+    <button id="a-revert">되돌리기</button>
+    <button class="t-보류" data-tag="보류">보류</button>
+    <button class="t-편집" data-tag="편집">편집</button>
+    <button class="t-재생성" data-tag="재생성">재생성</button>
+    <button id="a-skip">다음 →</button>
+  </div>
+  <div class="vbottom">
+    <span class="pc" id="v-pc">변경 없음</span>
+    <button id="v-review">목록</button>
+    <button id="v-commit" class="primary">커밋</button>
+  </div>
+</section>
+
+<!-- 수동 편집 시트 -->
+<div id="manual" class="scrim hidden">
+  <div class="sheet">
+    <h3>이름 수정</h3>
+    <div class="muted" id="m-orig"></div>
+    <label>감정코드</label>
+    <select id="m-code"></select>
+    <div class="row">
+      <div class="grow"><label>후보 번호 (비우면 확정)</label><input id="m-n" inputmode="numeric" placeholder="예: 1"></div>
+      <div class="grow"><label>태그</label>
+        <select id="m-tag"><option value="">없음</option><option>보류</option><option>편집</option><option>재생성</option></select></div>
+    </div>
+    <label>또는 파일 이름 직접 입력 (확장자 제외)</label>
+    <input id="m-free" autocomplete="off" autocapitalize="off" placeholder="비워두면 위 항목으로 생성">
+    <div class="preview" id="m-preview"></div>
+    <div id="m-err" class="err hidden"></div>
+    <div class="row" style="margin-top:12px"><button id="m-cancel" class="grow">취소</button><button id="m-apply" class="primary grow">적용</button></div>
+  </div>
+</div>
+
+<!-- 변경 목록 / 커밋 시트 -->
+<div id="review" class="scrim hidden">
+  <div class="sheet">
+    <h3>변경 목록</h3>
+    <div class="muted" id="r-sum"></div>
+    <div class="pending-list" id="r-list" style="margin-top:10px"></div>
+    <label>커밋 메시지</label>
+    <input id="r-msg">
+    <div id="r-err" class="err hidden"></div>
+    <div class="row" style="margin-top:12px">
+      <button id="r-clear">모두 취소</button><span class="grow"></span>
+      <button id="r-close">닫기</button><button id="r-commit" class="primary">커밋</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const TAGS = ['보류','편집','재생성'];
+const IMG_RE = /\.(webp|png|jpe?g)$/i;
+const DEFAULTS = {owner:'ISHNN032', repo:'illust-review-images', branch:'main', token:''};
+
+// ---------- storage (guarded) ----------
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v==null ? d : JSON.parse(v); }catch{ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} },
+  del(k){ try{ localStorage.removeItem(k); }catch{} },
+};
+let cfg = Object.assign({}, DEFAULTS, store.get('ir.cfg', {}));
+const pendKey = () => `ir.pending.${cfg.owner}/${cfg.repo}@${cfg.branch}`;
+
+// ---------- state ----------
+let headSha = null;
+let items = [];           // {orig, sha, mode, project, char}
+let byOrig = new Map();
+let pending = new Map();  // orig -> new path
+let emotions = {};        // project -> Map(code -> {name, prompt})
+let project = store.get('ir.project', null);
+let char = null;
+let view = [];            // filtered items for viewer
+let idx = 0;
+
+// ---------- github ----------
+async function gh(path, opt = {}){
+  const res = await fetch(`https://api.github.com${path}`, {
+    ...opt,
+    headers: {
+      'Authorization': `Bearer ${cfg.token}`,
+      'Accept': opt.accept || 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+      ...(opt.body ? {'Content-Type':'application/json'} : {}),
+    },
+  });
+  if (!res.ok){
+    let msg = `${res.status} ${res.statusText}`;
+    try{ const j = await res.json(); if (j.message) msg += ` — ${j.message}`; }catch{}
+    const e = new Error(msg); e.status = res.status; throw e;
+  }
+  return opt.raw ? res : res.json();
+}
+const R = () => `/repos/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}`;
+
+// blob cache (object URLs, LRU)
+const blobCache = new Map(); const inflight = new Map();
+function blobUrl(sha){
+  if (blobCache.has(sha)){ const u = blobCache.get(sha); blobCache.delete(sha); blobCache.set(sha, u); return Promise.resolve(u); }
+  if (inflight.has(sha)) return inflight.get(sha);
+  const p = gh(`${R()}/git/blobs/${sha}`, {accept:'application/vnd.github.raw+json', raw:true})
+    .then(r => r.blob()).then(b => {
+      const u = URL.createObjectURL(b); blobCache.set(sha, u); inflight.delete(sha);
+      while (blobCache.size > 60){ const [k, v] = blobCache.entries().next().value; URL.revokeObjectURL(v); blobCache.delete(k); }
+      return u;
+    }).catch(e => { inflight.delete(sha); throw e; });
+  inflight.set(sha, p); return p;
+}
+async function blobText(sha){
+  const r = await gh(`${R()}/git/blobs/${sha}`, {accept:'application/vnd.github.raw+json', raw:true});
+  return (await r.text()).replace(/^﻿/, '');
+}
+
+// ---------- csv ----------
+function parseCSV(text){
+  const rows = []; let row = [], f = '', q = false;
+  for (let i = 0; i < text.length; i++){
+    const c = text[i];
+    if (q){ if (c === '"'){ if (text[i+1] === '"'){ f += '"'; i++; } else q = false; } else f += c; }
+    else if (c === '"') q = true;
+    else if (c === ','){ row.push(f); f = ''; }
+    else if (c === '\n' || c === '\r'){ if (c === '\r' && text[i+1] === '\n') i++; row.push(f); rows.push(row); row = []; f = ''; }
+    else f += c;
+  }
+  if (f || row.length){ row.push(f); rows.push(row); }
+  return rows.filter(r => r.some(x => x.trim()));
+}
+function emotionMap(text){
+  const rows = parseCSV(text); const head = rows.shift().map(h => h.trim());
+  const ci = head.indexOf('name'), di = head.indexOf('description'), ai = head.indexOf('add');
+  const m = new Map();
+  for (const r of rows){ const code = parseInt(r[ci], 10); if (!isNaN(code)) m.set(code, {name:(r[di]||'').trim(), prompt:(r[ai]||'').trim()}); }
+  return m;
+}
+
+// ---------- names ----------
+const prefixOf = c => c.replace(/_+$/, '');
+const dirOf = p => p.slice(0, p.lastIndexOf('/'));
+const baseOf = p => p.slice(p.lastIndexOf('/') + 1);
+const extOf = p => (p.match(/\.[^.\/]+$/) || [''])[0];
+const cur = it => pending.get(it.orig) || it.orig;
+function parse(it){
+  const base = baseOf(cur(it)); const pre = prefixOf(it.char);
+  const re = new RegExp(`^${pre.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}_(\\d+)(?:_(\\d+))?(?:_(${TAGS.join('|')}))?\\.[a-z]+$`, 'i');
+  const m = base.match(re);
+  if (!m) return {code:null, n:null, tag:null, base};
+  return {code:+m[1], n:m[2] ? +m[2] : null, tag:m[3] || null, base};
+}
+function buildName(it, code, n, tag){
+  let s = `${prefixOf(it.char)}_${code}`;
+  if (n != null) s += `_${n}`;
+  if (tag) s += `_${tag}`;
+  return s + extOf(it.orig);
+}
+const charDir = it => `${it.project}/${it.char}`;
+const charItems = (p = project, c = char) => items.filter(i => i.project === p && i.char === c);
+function nextN(it, code){
+  let max = 0;
+  for (const o of charItems(it.project, it.char)){ if (o === it) continue; const q = parse(o); if (q.code === code && q.n) max = Math.max(max, q.n); }
+  return max + 1;
+}
+function occupant(path, except){
+  for (const o of items){ if (o !== except && cur(o) === path) return o; }
+  return null;
+}
+function setPath(it, path){
+  if (path === it.orig) pending.delete(it.orig); else pending.set(it.orig, path);
+  store.set(pendKey(), [...pending]);
+}
+
+// ---------- load ----------
+async function load(){
+  $('h-err').classList.add('hidden'); $('h-loading').classList.remove('hidden');
+  try{
+    const ref = await gh(`${R()}/git/ref/heads/${encodeURIComponent(cfg.branch)}`);
+    headSha = ref.object.sha;
+    const tree = await gh(`${R()}/git/trees/${headSha}?recursive=1`);
+    items = []; byOrig = new Map(); emotions = {};
+    const csv = {};
+    for (const e of tree.tree){
+      if (e.type !== 'blob') continue;
+      const parts = e.path.split('/');
+      if (/(^|\/)emotions\.csv$/i.test(e.path)){ csv[parts.length > 1 ? parts[0] : ''] = e.sha; continue; }
+      if (parts.length < 3 || !IMG_RE.test(e.path)) continue;
+      const it = {orig:e.path, sha:e.sha, mode:e.mode, project:parts[0], char:parts[1]};
+      items.push(it); byOrig.set(it.orig, it);
+    }
+    const shared = csv[''] ? emotionMap(await blobText(csv[''])) : new Map();
+    for (const p of new Set(items.map(i => i.project))) emotions[p] = csv[p] ? emotionMap(await blobText(csv[p])) : shared;
+    pending = new Map((store.get(pendKey(), []) || []).filter(([o]) => byOrig.has(o)));
+    if (tree.truncated) showErr('h-err', '파일이 너무 많아 일부만 불러왔습니다.');
+  }catch(e){
+    showErr('h-err', '불러오기 실패: ' + e.message + (e.status === 401 ? '\n토큰을 확인하세요.' : e.status === 404 ? '\n저장소 이름/권한을 확인하세요.' : ''));
+  }
+  $('h-loading').classList.add('hidden');
+  renderHome();
+}
+
+// ---------- home ----------
+function renderHome(){
+  const projects = [...new Set(items.map(i => i.project))].sort();
+  if (!projects.includes(project)) project = projects[0] || null;
+  $('h-projects').innerHTML = '';
+  for (const p of projects){
+    const b = document.createElement('button'); b.className = 'chip' + (p === project ? ' on' : ''); b.textContent = p;
+    b.onclick = () => { project = p; store.set('ir.project', p); renderHome(); };
+    $('h-projects').append(b);
+  }
+  $('h-chars').innerHTML = '';
+  const chars = [...new Set(items.filter(i => i.project === project).map(i => i.char))].sort();
+  for (const c of chars){
+    const list = charItems(project, c);
+    const codes = new Set(), done = new Set(); let ch = 0;
+    for (const it of list){ const q = parse(it); if (q.code != null){ codes.add(q.code); if (q.n == null && !q.tag) done.add(q.code); } if (pending.has(it.orig)) ch++; }
+    const pct = codes.size ? Math.round(done.size / codes.size * 100) : 0;
+    const b = document.createElement('button'); b.className = 'card';
+    b.innerHTML = `<b></b><span class="muted">${list.length}장 · 확정 ${done.size}/${codes.size}${ch ? ` · 변경 ${ch}` : ''}</span><div class="bar"><i style="width:${pct}%"></i></div>`;
+    b.querySelector('b').textContent = prefixOf(c);
+    b.onclick = () => openChar(c);
+    $('h-chars').append(b);
+  }
+  updatePending();
+}
+
+// ---------- viewer ----------
+function sortKey(it){ const q = parse(it); return [q.code == null ? 1e9 : q.code, q.n == null ? 0 : q.n, q.base]; }
+function cmp(a, b){ const x = sortKey(a), y = sortKey(b); for (let i = 0; i < 3; i++){ if (x[i] < y[i]) return -1; if (x[i] > y[i]) return 1; } return 0; }
+function openChar(c){
+  char = c; idx = 0;
+  $('home').classList.add('hidden'); $('viewer').classList.remove('hidden');
+  rebuild(null); render();
+}
+function rebuild(keep){
+  const f = $('v-filter').value;
+  const all = charItems().sort(cmp);
+  const doneCodes = new Set(all.map(parse).filter(q => q.code != null && q.n == null && !q.tag).map(q => q.code));
+  view = all.filter(it => {
+    const q = parse(it);
+    if (f === 'open') return q.code == null || !doneCodes.has(q.code);
+    if (f === 'tag') return !!q.tag;
+    if (f === 'changed') return pending.has(it.orig);
+    return true;
+  });
+  if (keep){ const k = view.indexOf(keep); if (k >= 0) idx = k; }
+  idx = Math.max(0, Math.min(idx, view.length - 1));
+  // jump list
+  const em = emotions[project] || new Map(); const sel = $('v-jump'); sel.innerHTML = '<option value="">코드</option>';
+  const seen = new Set();
+  view.forEach((it, i) => { const q = parse(it); const k = q.code == null ? '?' : q.code; if (seen.has(k)) return; seen.add(k);
+    const o = document.createElement('option'); o.value = i; o.textContent = q.code == null ? '미분류' : `${q.code} ${em.get(q.code)?.name || ''}`; sel.append(o); });
+}
+let renderToken = 0;
+function render(){
+  const it = view[idx];
+  $('v-title').textContent = prefixOf(char);
+  if (!it){
+    $('v-img').removeAttribute('src'); $('v-spin').textContent = '해당하는 이미지가 없습니다'; $('v-spin').classList.remove('hidden');
+    ['v-code','v-emo','v-prompt','v-fname','v-pos','v-badge'].forEach(i => $(i).textContent = ''); $('v-sibs').innerHTML = '';
+    $('v-badge').className = 'badge hidden';
+    updatePending(); return;
+  }
+  const q = parse(it); const em = (emotions[project] || new Map()).get(q.code);
+  $('v-pos').textContent = `${idx + 1} / ${view.length}`;
+  $('v-code').textContent = q.code == null ? '?' : q.code;
+  $('v-emo').textContent = q.code == null ? '미분류 (이름 수정 필요)' : (em ? em.name : '정의 없음');
+  $('v-prompt').textContent = em ? em.prompt : '';
+  const changed = pending.has(it.orig);
+  $('v-fname').innerHTML = '';
+  if (changed){ const s = document.createElement('s'); s.textContent = baseOf(it.orig); $('v-fname').append(s, Object.assign(document.createElement('span'), {className:'arrow', textContent:' → '})); }
+  $('v-fname').append(document.createTextNode(baseOf(cur(it)) + (dirOf(cur(it)) !== dirOf(it.orig) ? `  (${dirOf(cur(it))})` : '')));
+  const badge = $('v-badge');
+  if (q.code == null){ badge.className = 'badge b-unk'; badge.textContent = '미분류'; }
+  else if (q.tag){ badge.className = 'badge b-' + q.tag; badge.textContent = q.tag; }
+  else if (q.n == null){ badge.className = 'badge b-ok'; badge.textContent = '확정'; }
+  else { badge.className = 'badge b-cand'; badge.textContent = `후보 ${q.n}`; }
+  document.querySelectorAll('[data-tag]').forEach(b => b.classList.toggle('on', b.dataset.tag === q.tag));
+  $('a-revert').disabled = !changed;
+  $('a-confirm').disabled = q.code == null || (q.n == null && !q.tag);
+
+  const t = ++renderToken;
+  $('v-spin').textContent = '불러오는 중…'; $('v-spin').classList.remove('hidden'); $('v-img').style.opacity = .25;
+  blobUrl(it.sha).then(u => { if (t !== renderToken) return; $('v-img').src = u; $('v-img').style.opacity = 1; $('v-spin').classList.add('hidden'); })
+    .catch(e => { if (t !== renderToken) return; $('v-spin').textContent = '이미지 로드 실패: ' + e.message; });
+  for (const k of [1, 2, -1]){ const n = view[idx + k]; if (n) blobUrl(n.sha).catch(() => {}); }
+
+  // siblings with same code
+  const sb = $('v-sibs'); sb.innerHTML = '';
+  if (q.code != null){
+    const sibs = charItems().filter(o => parse(o).code === q.code).sort(cmp);
+    if (sibs.length > 1) for (const o of sibs){
+      const oq = parse(o); const b = document.createElement('button');
+      b.className = 'sib' + (o === it ? ' cur' : '') + (oq.n == null && !oq.tag ? ' ok' : '');
+      b.innerHTML = `<span>${oq.n == null && !oq.tag ? '확정' : (oq.tag || oq.n)}</span>`;
+      blobUrl(o.sha).then(u => b.style.backgroundImage = `url("${u}")`).catch(() => {});
+      b.onclick = () => { const k = view.indexOf(o); if (k >= 0){ idx = k; render(); } else { $('v-filter').value = 'all'; rebuild(o); render(); } };
+      sb.append(b);
+    }
+  }
+  updatePending();
+}
+function go(d){ if (!view.length) return; idx = Math.max(0, Math.min(view.length - 1, idx + d)); render(); }
+function after(it, advance){
+  rebuild(it); render();
+  if (advance) setTimeout(() => go(1), 120);
+}
+
+// actions
+function doConfirm(){
+  const it = view[idx]; if (!it) return; const q = parse(it); if (q.code == null) return;
+  const target = `${charDir(it)}/${buildName(it, q.code, null, null)}`;
+  const occ = occupant(target, it);
+  if (occ){
+    if (!confirm(`${q.code}번에 이미 확정본이 있습니다 (${baseOf(cur(occ))}).\n기존 확정본을 후보로 되돌리고 이 이미지로 확정할까요?`)) return;
+    setPath(occ, `${charDir(occ)}/${buildName(occ, q.code, nextN(occ, q.code), null)}`);
+  }
+  setPath(it, target);
+  toast(`${q.code}번 확정`);
+  after(it, true);
+}
+function doTag(tag){
+  const it = view[idx]; if (!it) return; const q = parse(it);
+  if (q.code == null){ toast('먼저 이름 수정으로 감정코드를 지정하세요'); return; }
+  const newTag = q.tag === tag ? null : tag;
+  const n = q.n != null ? q.n : nextN(it, q.code);
+  const target = `${charDir(it)}/${buildName(it, q.code, n, newTag)}`;
+  if (occupant(target, it)){ toast('같은 이름의 파일이 있습니다'); return; }
+  setPath(it, target);
+  toast(newTag ? `${newTag} 태그` : '태그 제거');
+  after(it, !!newTag);
+}
+function doRevert(){
+  const it = view[idx]; if (!it) return;
+  if (occupant(it.orig, it)){ toast('원래 이름을 다른 이미지가 쓰고 있습니다'); return; }
+  setPath(it, it.orig); after(it, false);
+}
+
+// manual sheet
+function openManual(){
+  const it = view[idx]; if (!it) return; const q = parse(it);
+  const em = emotions[project] || new Map();
+  const sel = $('m-code'); sel.innerHTML = '';
+  const codes = new Set([...em.keys()]); charItems().forEach(o => { const c = parse(o).code; if (c != null) codes.add(c); });
+  for (let c = 1; c <= Math.max(60, ...codes); c++){
+    const o = document.createElement('option'); o.value = c; o.textContent = `${c}  ${em.get(c)?.name || (codes.has(c) ? '(정의 없음)' : '')}`; sel.append(o);
+  }
+  sel.value = q.code != null ? q.code : (em.keys().next().value || 1);
+  $('m-n').value = q.n != null ? q.n : (q.code == null ? '1' : '');
+  $('m-tag').value = q.tag || '';
+  $('m-free').value = '';
+  $('m-orig').textContent = `원래 이름: ${baseOf(it.orig)}  ·  현재: ${baseOf(cur(it))}`;
+  $('m-err').classList.add('hidden');
+  $('manual').classList.remove('hidden');
+  manualPreview();
+}
+let codeChanged = false;
+function manualTarget(){
+  const it = view[idx]; const q = parse(it);
+  const free = $('m-free').value.trim();
+  if (free){
+    if (/[\/\\:*?"<>|]/.test(free)) throw new Error('파일 이름에 쓸 수 없는 문자가 있습니다');
+    return `${charDir(it)}/${free}${extOf(it.orig)}`;
+  }
+  const code = +$('m-code').value;
+  let nv = $('m-n').value.trim();
+  if (nv && !/^\d+$/.test(nv)) throw new Error('후보 번호는 숫자만 입력하세요');
+  let n = nv ? +nv : null;
+  const tag = $('m-tag').value || null;
+  if (tag && n == null) n = nextN(it, code);
+  return `${charDir(it)}/${buildName(it, code, n, tag)}`;
+}
+function manualPreview(){
+  const it = view[idx];
+  try{
+    const t = manualTarget(); const occ = occupant(t, it);
+    const em = (emotions[project] || new Map()).get(+$('m-code').value);
+    $('m-preview').textContent = baseOf(t) + (occ ? '  ⚠ 이미 있는 이름' : '') + ($('m-free').value.trim() ? '' : `\n${em ? em.name : '정의 없음'}`);
+    $('m-err').classList.add('hidden');
+  }catch(e){ $('m-preview').textContent = '—'; showErr('m-err', e.message); }
+}
+['m-code','m-n','m-tag','m-free'].forEach(i => $(i).addEventListener('input', manualPreview));
+$('m-code').addEventListener('change', () => {
+  // 코드를 바꾸면 대상 코드의 다음 후보 번호를 자동 제안
+  const it = view[idx]; const code = +$('m-code').value; const q = parse(it);
+  if (code !== q.code && $('m-n').value.trim() !== '') $('m-n').value = nextN(it, code);
+  manualPreview();
+});
+$('m-cancel').onclick = () => $('manual').classList.add('hidden');
+$('m-apply').onclick = () => {
+  const it = view[idx];
+  try{
+    const t = manualTarget();
+    const occ = occupant(t, it);
+    if (occ) throw new Error(`이미 같은 이름이 있습니다: ${baseOf(t)}`);
+    setPath(it, t); $('manual').classList.add('hidden'); toast('이름 변경됨'); after(it, false);
+  }catch(e){ showErr('m-err', e.message); }
+};
+
+// ---------- pending / commit ----------
+function updatePending(){
+  const n = pending.size;
+  $('v-pc').textContent = n ? `커밋 대기 ${n}건` : '변경 없음';
+  $('v-commit').disabled = !n;
+  $('h-pending').classList.toggle('hidden', !n);
+  $('h-pc').textContent = `커밋 대기 ${n}건`;
+}
+function openReview(){
+  const list = $('r-list'); list.innerHTML = '';
+  const rows = [...pending].sort((a, b) => a[0].localeCompare(b[0], 'ko', {numeric:true}));
+  for (const [o, nw] of rows){ const d = document.createElement('div'); d.textContent = `${o.split('/').slice(0, 2).join('/')}: ${baseOf(o)} → ${baseOf(nw)}`; list.append(d); }
+  if (!rows.length) list.textContent = '변경 없음';
+  const scopes = [...new Set(rows.map(([o]) => o.split('/').slice(0, 2).map(prefixOf).join('/')))];
+  $('r-sum').textContent = `${rows.length}건`;
+  $('r-msg').value = `검수: ${scopes.join(', ')} ${rows.length}건 이름 변경`;
+  $('r-err').classList.add('hidden');
+  $('r-commit').disabled = !rows.length;
+  $('review').classList.remove('hidden');
+}
+async function commit(){
+  const btn = $('r-commit'); btn.disabled = true; btn.textContent = '커밋 중…';
+  try{
+    const ref = await gh(`${R()}/git/ref/heads/${encodeURIComponent(cfg.branch)}`);
+    if (ref.object.sha !== headSha) throw new Error('그 사이 저장소가 바뀌었습니다. 새로고침 후 다시 시도하세요 (변경 목록은 유지됩니다).');
+    const targets = new Set(pending.values());
+    const entries = [];
+    for (const [o, nw] of pending){
+      const it = byOrig.get(o);
+      entries.push({path:nw, mode:it.mode, type:'blob', sha:it.sha});
+      if (!targets.has(o)) entries.push({path:o, mode:it.mode, type:'blob', sha:null});
+    }
+    const base = await gh(`${R()}/git/commits/${headSha}`);
+    const tree = await gh(`${R()}/git/trees`, {method:'POST', body:JSON.stringify({base_tree:base.tree.sha, tree:entries})});
+    const c = await gh(`${R()}/git/commits`, {method:'POST', body:JSON.stringify({message:$('r-msg').value || '검수 이름 변경', tree:tree.sha, parents:[headSha]})});
+    await gh(`${R()}/git/refs/heads/${encodeURIComponent(cfg.branch)}`, {method:'PATCH', body:JSON.stringify({sha:c.sha, force:false})});
+    const n = pending.size; pending.clear(); store.del(pendKey());
+    $('review').classList.add('hidden'); toast(`${n}건 커밋 완료`);
+    const keepChar = char, inViewer = !$('viewer').classList.contains('hidden');
+    await load();
+    if (inViewer && keepChar){ char = keepChar; rebuild(null); render(); }
+  }catch(e){ showErr('r-err', '커밋 실패: ' + e.message); }
+  btn.disabled = false; btn.textContent = '커밋';
+}
+
+// ---------- helpers ----------
+function showErr(id, msg){ const el = $(id); el.textContent = msg; el.classList.remove('hidden'); }
+let toastT; function toast(m){ const t = $('toast'); t.textContent = m; t.classList.remove('hidden'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.add('hidden'), 1400); }
+
+// ---------- wiring ----------
+$('v-back').onclick = () => { $('viewer').classList.add('hidden'); $('home').classList.remove('hidden'); renderHome(); };
+$('v-prev').onclick = () => go(-1); $('v-next').onclick = () => go(1); $('a-skip').onclick = () => go(1);
+$('v-filter').onchange = () => { idx = 0; rebuild(null); render(); };
+$('v-jump').onchange = e => { if (e.target.value !== ''){ idx = +e.target.value; render(); } e.target.value = ''; };
+$('a-confirm').onclick = doConfirm; $('a-revert').onclick = doRevert; $('a-manual').onclick = openManual;
+document.querySelectorAll('[data-tag]').forEach(b => b.onclick = () => doTag(b.dataset.tag));
+$('v-prompt').onclick = () => $('v-prompt').classList.toggle('open');
+$('v-review').onclick = openReview; $('v-commit').onclick = openReview; $('h-review').onclick = openReview; $('h-commit').onclick = openReview;
+$('r-close').onclick = () => $('review').classList.add('hidden');
+$('r-commit').onclick = commit;
+$('r-clear').onclick = () => { if (!confirm('커밋하지 않은 변경을 모두 취소할까요?')) return; pending.clear(); store.del(pendKey()); $('review').classList.add('hidden');
+  if (!$('viewer').classList.contains('hidden')){ rebuild(view[idx]); render(); } else renderHome(); };
+$('h-reload').onclick = load;
+$('h-settings').onclick = showSetup;
+document.addEventListener('keydown', e => {
+  if ($('viewer').classList.contains('hidden') || !$('manual').classList.contains('hidden') || !$('review').classList.contains('hidden')) return;
+  if (e.key === 'ArrowLeft') go(-1); if (e.key === 'ArrowRight') go(1);
+});
+// swipe
+(() => { let x0 = null, y0 = 0; const st = $('v-stage'), img = $('v-img');
+  st.addEventListener('touchstart', e => { if (e.touches.length !== 1) { x0 = null; return; } x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, {passive:true});
+  st.addEventListener('touchmove', e => { if (x0 == null) return; const dx = e.touches[0].clientX - x0; img.style.transform = `translateX(${dx * .4}px)`; }, {passive:true});
+  st.addEventListener('touchend', e => { img.style.transform = ''; if (x0 == null) return; const t = e.changedTouches[0]; const dx = t.clientX - x0, dy = t.clientY - y0;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) go(dx < 0 ? 1 : -1); x0 = null; });
+})();
+
+function showSetup(){
+  $('home').classList.add('hidden'); $('viewer').classList.add('hidden'); $('setup').classList.remove('hidden');
+  $('s-owner').value = cfg.owner; $('s-repo').value = cfg.repo; $('s-branch').value = cfg.branch; $('s-token').value = cfg.token;
+}
+$('s-save').onclick = async () => {
+  const c = {owner:$('s-owner').value.trim(), repo:$('s-repo').value.trim(), branch:$('s-branch').value.trim() || 'main', token:$('s-token').value.trim()};
+  if (!c.owner || !c.repo || !c.token){ showErr('s-err', '모든 항목을 입력하세요'); return; }
+  cfg = c; store.set('ir.cfg', cfg); $('s-err').classList.add('hidden');
+  $('setup').classList.add('hidden'); $('home').classList.remove('hidden'); load();
+};
+
+// boot (URL ?token= 는 받지 않음 — 주소창/기록에 남지 않도록)
+if (!cfg.token) showSetup(); else { $('home').classList.remove('hidden'); load(); }
+})();
+</script>
+</body>
+</html>
