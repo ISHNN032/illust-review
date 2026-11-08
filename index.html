@@ -304,6 +304,8 @@ function buildName(it, code, n, tag){
   return s + extOf(it.orig);
 }
 const charDir = it => `${it.project}/${it.char}`;
+const HOLD_DIR = '보류';
+const dirFor = (it, tag) => tag === '보류' ? `${charDir(it)}/${HOLD_DIR}` : charDir(it);
 const charItems = (p = project, c = char) => items.filter(i => i.project === p && i.char === c);
 function nextN(it, code){
   let max = 0;
@@ -473,7 +475,7 @@ function doTag(tag){
   if (q.code == null){ toast('먼저 이름 수정으로 감정코드를 지정하세요'); return; }
   const newTag = q.tag === tag ? null : tag;
   const n = q.n != null ? q.n : nextN(it, q.code);
-  const target = `${charDir(it)}/${buildName(it, q.code, n, newTag)}`;
+  const target = `${dirFor(it, newTag)}/${buildName(it, q.code, n, newTag)}`;
   if (occupant(target, it)){ toast('같은 이름의 파일이 있습니다'); return; }
   setPath(it, target);
   toast(newTag ? `${newTag} 태그` : '태그 제거');
@@ -509,7 +511,7 @@ function manualTarget(){
   const free = $('m-free').value.trim();
   if (free){
     if (/[\/\\:*?"<>|]/.test(free)) throw new Error('파일 이름에 쓸 수 없는 문자가 있습니다');
-    return `${charDir(it)}/${free}${extOf(it.orig)}`;
+    return `${/_보류$/.test(free) ? dirFor(it, '보류') : charDir(it)}/${free}${extOf(it.orig)}`;
   }
   const code = +$('m-code').value;
   let nv = $('m-n').value.trim();
@@ -517,7 +519,7 @@ function manualTarget(){
   let n = nv ? +nv : null;
   const tag = $('m-tag').value || null;
   if (tag && n == null) n = nextN(it, code);
-  return `${charDir(it)}/${buildName(it, code, n, tag)}`;
+  return `${dirFor(it, tag)}/${buildName(it, code, n, tag)}`;
 }
 function manualPreview(){
   const it = view[idx];
